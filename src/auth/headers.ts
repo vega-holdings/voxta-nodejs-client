@@ -13,7 +13,7 @@ function stripOuterQuotes(value: string): string {
 
 export function normalizeBearerToken(token: string): string {
   const cleaned = stripOuterQuotes(token);
-  if (/^Bearer\\s+/i.test(cleaned)) return cleaned;
+  if (/^Bearer\s+/i.test(cleaned)) return cleaned;
   return `Bearer ${cleaned}`;
 }
 
