@@ -2,27 +2,44 @@ import * as signalR from '@microsoft/signalr';
 
 import { TypedEventEmitter } from '../utils/TypedEventEmitter.js';
 import type {
+  ClientAddChatParticipantMessage,
   ClientAuthenticateMessage,
+  ClientCharacterSpeechRequestMessage,
+  ClientDeleteMessageMessage,
+  ClientInspectAudioInputMessage,
+  ClientInspectMessage,
   ClientInterruptMessage,
   ClientLoadCharactersListMessage,
   ClientLoadChatsListMessage,
   ClientLoadScenariosListMessage,
   ClientPauseChatMessage,
+  ClientRegisterAppMessage,
+  ClientRemoveChatParticipantMessage,
+  ClientRequestSuggestionsMessage,
   ClientRevertMessage,
   ClientResumeChatMessage,
   ClientRetryMessage,
   ClientSendMessage,
+  ClientSpeakMessage,
+  ClientSpeechPlaybackCompleteMessage,
+  ClientSpeechPlaybackStartMessage,
   ClientStartChatMessage,
   ClientStopChatMessage,
   ClientSubscribeToChatMessage,
+  ClientTriggerActionMessage,
+  ClientTypingEndMessage,
+  ClientTypingStartMessage,
   ClientUnsubscribeFromChatMessage,
   ClientUpdateContextMessage,
+  ClientUpdateMessage,
   ClientMessage,
   ClientMessageType,
   ServerCharactersListLoadedMessage,
   ServerChatsListLoadedMessage,
   ServerScenariosListLoadedMessage,
   ServerChatStartedMessage,
+  ServerChatParticipantsUpdatedMessage,
+  ServerSuggestionsMessage,
   ServerAuthenticationRequiredMessage,
   ServerErrorMessage,
   ServerMessage,
@@ -409,5 +426,150 @@ export class VoxtaClient {
     const resultPromise = this.waitForMessageType('chatsListLoaded', options);
     await this.loadChatsList(payload);
     return await resultPromise;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Typing indicators
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  async typingStart(payload: Omit<ClientTypingStartMessage, '$type'>): Promise<void> {
+    await this.sendType('typingStart', payload);
+  }
+
+  async typingEnd(payload: Omit<ClientTypingEndMessage, '$type'>): Promise<void> {
+    await this.sendType('typingEnd', payload);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Message management
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  async updateMessage(payload: Omit<ClientUpdateMessage, '$type'>): Promise<void> {
+    await this.sendType('update', payload);
+  }
+
+  async deleteMessage(payload: Omit<ClientDeleteMessageMessage, '$type'>): Promise<void> {
+    await this.sendType('deleteMessage', payload);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Actions
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  async triggerAction(payload: Omit<ClientTriggerActionMessage, '$type'>): Promise<void> {
+    await this.sendType('triggerAction', payload);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Chat participants
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  async addChatParticipant(payload: Omit<ClientAddChatParticipantMessage, '$type'>): Promise<void> {
+    await this.sendType('addChatParticipant', payload);
+  }
+
+  async addChatParticipantAndWait(
+    payload: Omit<ClientAddChatParticipantMessage, '$type'>,
+    options: WaitForMessageOptions<ServerChatParticipantsUpdatedMessage> = {},
+  ): Promise<ServerChatParticipantsUpdatedMessage> {
+    const resultPromise = this.waitForMessageType('chatParticipantsUpdated', {
+      ...options,
+      predicate: (m) => {
+        if (m.sessionId !== payload.sessionId) return false;
+        return options.predicate ? options.predicate(m) : true;
+      },
+    });
+    await this.addChatParticipant(payload);
+    return await resultPromise;
+  }
+
+  async removeChatParticipant(
+    payload: Omit<ClientRemoveChatParticipantMessage, '$type'>,
+  ): Promise<void> {
+    await this.sendType('removeChatParticipant', payload);
+  }
+
+  async removeChatParticipantAndWait(
+    payload: Omit<ClientRemoveChatParticipantMessage, '$type'>,
+    options: WaitForMessageOptions<ServerChatParticipantsUpdatedMessage> = {},
+  ): Promise<ServerChatParticipantsUpdatedMessage> {
+    const resultPromise = this.waitForMessageType('chatParticipantsUpdated', {
+      ...options,
+      predicate: (m) => {
+        if (m.sessionId !== payload.sessionId) return false;
+        return options.predicate ? options.predicate(m) : true;
+      },
+    });
+    await this.removeChatParticipant(payload);
+    return await resultPromise;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Suggestions
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  async requestSuggestions(payload: Omit<ClientRequestSuggestionsMessage, '$type'>): Promise<void> {
+    await this.sendType('requestSuggestions', payload);
+  }
+
+  async requestSuggestionsAndWait(
+    payload: Omit<ClientRequestSuggestionsMessage, '$type'>,
+    options: WaitForMessageOptions<ServerSuggestionsMessage> = {},
+  ): Promise<ServerSuggestionsMessage> {
+    const resultPromise = this.waitForMessageType('suggestions', {
+      ...options,
+      predicate: (m) => {
+        if (m.sessionId && m.sessionId !== payload.sessionId) return false;
+        return options.predicate ? options.predicate(m) : true;
+      },
+    });
+    await this.requestSuggestions(payload);
+    return await resultPromise;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Inspection / debugging
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  async inspect(payload: Omit<ClientInspectMessage, '$type'>): Promise<void> {
+    await this.sendType('inspect', payload);
+  }
+
+  async inspectAudioInput(payload: Omit<ClientInspectAudioInputMessage, '$type'>): Promise<void> {
+    await this.sendType('inspectAudioInput', payload);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Speech / TTS
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  async characterSpeechRequest(
+    payload: Omit<ClientCharacterSpeechRequestMessage, '$type'>,
+  ): Promise<void> {
+    await this.sendType('characterSpeechRequest', payload);
+  }
+
+  async speak(payload: Omit<ClientSpeakMessage, '$type'>): Promise<void> {
+    await this.sendType('speak', payload);
+  }
+
+  async speechPlaybackStart(
+    payload: Omit<ClientSpeechPlaybackStartMessage, '$type'>,
+  ): Promise<void> {
+    await this.sendType('speechPlaybackStart', payload);
+  }
+
+  async speechPlaybackComplete(
+    payload: Omit<ClientSpeechPlaybackCompleteMessage, '$type'>,
+  ): Promise<void> {
+    await this.sendType('speechPlaybackComplete', payload);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // App registration
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  async registerApp(payload: Omit<ClientRegisterAppMessage, '$type'> = {}): Promise<void> {
+    await this.sendType('registerApp', payload);
   }
 }

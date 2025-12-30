@@ -269,6 +269,83 @@ describe('VoxtaClient Integration', () => {
       // Clear chatSession so afterEach doesn't try to stop it again
       chatSession = null as any;
     }, TEST_TIMEOUT);
+
+    it('should send typing indicators without error', async () => {
+      const character = characters[0];
+
+      chatSession = await client.startChatAndWait(
+        { characterId: character.id },
+        { timeoutMs: TEST_TIMEOUT },
+      );
+
+      // typingStart and typingEnd should not throw
+      await expect(
+        client.typingStart({ sessionId: chatSession.sessionId }),
+      ).resolves.not.toThrow();
+
+      await expect(
+        client.typingEnd({ sessionId: chatSession.sessionId, sent: false }),
+      ).resolves.not.toThrow();
+    }, TEST_TIMEOUT);
+
+    it('should request suggestions', async () => {
+      const character = characters[0];
+
+      chatSession = await client.startChatAndWait(
+        { characterId: character.id },
+        { timeoutMs: TEST_TIMEOUT },
+      );
+
+      // Send a message first to establish context
+      const replyPromise = client.waitForMessageType('replyEnd', {
+        timeoutMs: TEST_TIMEOUT,
+        predicate: (msg) => msg.sessionId === chatSession.sessionId,
+      });
+      await client.sendText(chatSession.sessionId, 'Hello!');
+      await replyPromise;
+
+      // Request suggestions
+      const suggestions = await client.requestSuggestionsAndWait(
+        { sessionId: chatSession.sessionId },
+        { timeoutMs: TEST_TIMEOUT },
+      );
+
+      expect(suggestions.$type).toBe('suggestions');
+      expect(Array.isArray(suggestions.suggestions)).toBe(true);
+    }, TEST_TIMEOUT);
+
+    it('should call speechPlaybackStart and speechPlaybackComplete without error', async () => {
+      const character = characters[0];
+
+      chatSession = await client.startChatAndWait(
+        { characterId: character.id },
+        { timeoutMs: TEST_TIMEOUT },
+      );
+
+      // Get a message first
+      const replyEnd = await client.waitForMessageType('replyEnd', {
+        timeoutMs: TEST_TIMEOUT,
+        predicate: (msg) => msg.sessionId === chatSession.sessionId,
+      });
+
+      // Simulate playback lifecycle
+      await expect(
+        client.speechPlaybackStart({
+          sessionId: chatSession.sessionId,
+          messageId: replyEnd.messageId,
+          startIndex: 0,
+          endIndex: 100,
+          duration: 1000,
+        }),
+      ).resolves.not.toThrow();
+
+      await expect(
+        client.speechPlaybackComplete({
+          sessionId: chatSession.sessionId,
+          messageId: replyEnd.messageId,
+        }),
+      ).resolves.not.toThrow();
+    }, TEST_TIMEOUT);
   });
 
   describe('Chat with Chats List', () => {
